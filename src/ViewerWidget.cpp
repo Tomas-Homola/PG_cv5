@@ -335,24 +335,6 @@ void ViewerWidget::drawBresenhamChosenY(QPoint point1, QPoint point2, QColor col
 		}
 	}
 }
-void ViewerWidget::createLineWithAlgorithm(QPoint point1, QPoint point2, QColor color, int lineAlgorithm)
-{
-	//qDebug() << "line drawn:" << point1 << point2;
-	if (lineAlgorithm == 0) // DDA
-	{
-		drawLineDDA(point1, point2, color);
-		//painter->drawText(point1, QString("(%1,%2)").arg(point1.x()).arg(point1.y()));
-		//painter->drawText(point2, QString("(%1,%2)").arg(point2.x()).arg(point2.y()));
-	}
-	else if (lineAlgorithm == 1) // mr. Bresenham
-	{
-		drawLineBresenham(point1, point2, color);
-		//painter->drawText(point1, QString("(%1,%2)").arg(point1.x()).arg(point1.y()));
-		//painter->drawText(point2, QString("(%1,%2)").arg(point2.x()).arg(point2.y()));
-	}
-	else
-		qDebug() << "Incorrect lineAlgorithm";
-}
 void ViewerWidget::drawGeometry(QVector<QPoint> geometryPoints, QColor penColor, QColor fillColor, int lineAlgorithm, int interpolationMethod)
 {
 	if (geometryPoints.size() == 2) // usecka
@@ -830,6 +812,29 @@ void ViewerWidget::drawLineBresenham(QPoint point1, QPoint point2, QColor color)
 	
 	update();
 }
+void ViewerWidget::createLineWithAlgorithm(QPoint point1, QPoint point2, QColor color, int lineAlgorithm, bool shouldDrawPoints = false)
+{
+	//qDebug() << "line drawn:" << point1 << point2;
+	if (lineAlgorithm == 0) // DDA
+	{
+		drawLineDDA(point1, point2, color);
+		//painter->drawText(point1, QString("(%1,%2)").arg(point1.x()).arg(point1.y()));
+		//painter->drawText(point2, QString("(%1,%2)").arg(point2.x()).arg(point2.y()));
+		if (shouldDrawPoints)
+			drawPoint(point1, defaultColor0); drawPoint(point2, defaultColor0);
+		
+	}
+	else if (lineAlgorithm == 1) // mr. Bresenham
+	{
+		drawLineBresenham(point1, point2, color);
+		//painter->drawText(point1, QString("(%1,%2)").arg(point1.x()).arg(point1.y()));
+		//painter->drawText(point2, QString("(%1,%2)").arg(point2.x()).arg(point2.y()));
+		if (shouldDrawPoints)
+			drawPoint(point1, defaultColor0); drawPoint(point2, defaultColor0);
+	}
+	else
+		qDebug() << "Incorrect lineAlgorithm";
+}
 void ViewerWidget::drawCircumference(QPoint point1, QPoint point2, QColor color)
 {
 	int deltaX = point2.x() - point1.x();
@@ -876,6 +881,22 @@ void ViewerWidget::drawCircumference(QPoint point1, QPoint point2, QColor color)
 
 	update();
 }
+void ViewerWidget::drawPoint(QPoint point, QColor color)
+{
+	int size = 3;
+	
+	//drawCircumference(point, QPoint(point.x() + size, point.y()), color);
+
+	drawLineBresenham(QPoint(point.x() - size, point.y() - size), QPoint(point.x() + size, point.y() + size), color);
+	drawLineBresenham(QPoint(point.x() - size, point.y() + size), QPoint(point.x() + size, point.y() - size), color);
+	drawLineBresenham(QPoint(point.x(), point.y() - size), QPoint(point.x(), point.y() + size), color);
+	drawLineBresenham(QPoint(point.x() - size, point.y()), QPoint(point.x() + size, point.y()), color);
+}
+void ViewerWidget::drawPoints(QVector<QPoint> points, QColor color)
+{
+	for (int i = 0; i < points.size(); i++)
+		drawPoint(points[i], color);
+}
 
 void ViewerWidget::createGeometry(QVector<QPoint>& geometryPoints, QColor penColor, QColor fillColor, int lineAlgorithm, int interpolationMethod)
 {
@@ -883,6 +904,10 @@ void ViewerWidget::createGeometry(QVector<QPoint>& geometryPoints, QColor penCol
 		trimLine(geometryPoints, penColor, lineAlgorithm);
 	else if (geometryPoints.size() > 2)
 		trimPolygon(geometryPoints, penColor, fillColor, lineAlgorithm, interpolationMethod);
+}
+
+void ViewerWidget::createCurve(QVector<QPoint>& curvePoints, QColor color, int curveType)
+{
 }
 
 //Slots

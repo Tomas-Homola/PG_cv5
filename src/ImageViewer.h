@@ -20,14 +20,15 @@ private:
 	QSettings settings;
 	QMessageBox msgBox;
 
-
 	// cv3 stuff
 	QColor currentPenColor;
 	QColor currentFillColor;
+	QColor pointColor = QColor("#ED1C24");
 	QVector<QPoint> geometryPoints;
 	QPoint mousePosition[2];
 
 	bool drawingEnabled = false;
+	int curveType = -1;
 
 	void infoMessage(QString message);
 	void warningMessage(QString message);
@@ -76,7 +77,7 @@ private slots:
 	void on_actionClear_triggered();
 	void on_actionSet_background_color_triggered();
 
-	// cv5 slots
+	// cvicenie stuff
 	void on_pushButton_PenColorDialog_clicked();
 	void on_pushButton_FillColorDialog_clicked();
 
@@ -88,4 +89,13 @@ private slots:
 	void on_pushButton_Symmetry_clicked();
 
 	void on_comboBox_InterpolationMethod_currentIndexChanged(int index);
+
+	void on_radioButton_Polygon_clicked();
+	void on_radioButton_Curve_clicked();
+
+	// krivky
+	void on_pushButton_CubicHermit_clicked();
+	void on_pushButton_BezierCurve_clicked();
+	void on_pushButton_CoonsCurve_clicked();
+	void on_pushButton_ClearCurve_clicked();
 };

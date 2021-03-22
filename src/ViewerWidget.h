@@ -17,9 +17,14 @@ struct Edge
 	}
 };
 
-enum interpolation
+enum Interpolation
 {
 	NearestNeighbor = 0, Barycentric1 = 1, Barycentric2 = 2
+};
+
+enum CurveType
+{
+	HermitCurve = 0, BezierCurve = 1, CoonsCurve = 2
 };
 
 class ViewerWidget :public QWidget {
@@ -34,11 +39,8 @@ private:
 	QColor defaultColor0 = QColor("#ED1C24");
 	QColor defaultColor1 = QColor("#00AD33");
 	QColor defaultColor2 = QColor("#1F75FE");
-	//QColor defaultColor0 = QColor("#FF0000");
-	//QColor defaultColor1 = QColor("#00FF00");
-	//QColor defaultColor2 = QColor("#0000FF");
 
-	// cv5 stuff
+	// pomocne funkcie
 	void swapPoints(QPoint& point1, QPoint& point2); // prehodenie 2 bodov
 	void printEdges(QVector<Edge> polygonEdges); // vypisat hrany polygonu
 	void printPoints(QVector<QPoint> polygonPoints);
@@ -48,12 +50,24 @@ private:
 	void bubbleSortTrianglePoints(QVector<QPoint>& trianglePoints); // usporiadanie bodov trojuholnika
 	void setEdgesOfPolygon(QVector<QPoint> polygonPoints, QVector<Edge>& polygonEdges); // vytvorenie hran pre polygon
 
+	// Hermitovske kubicke polynomy
+	double F0(double t) { return (2.0 * t * t * t - 3.0 * t * t + 1.0); }
+	double F1(double t) { return (-2.0 * t * t * t + 3.0 * t * t); }
+	double F2(double t) { return (t * t * t - 2.0 * t * t + t); }
+	double F3(double t) { return (t * t * t - t * t); }
+
+	// Kubicke polynomy
+	double B0(double t) { return (-(1.0 / 6.0) * t * t * t + 0.5 * t * t - 0.5 * t + (1.0 / 6.0)); }
+	double B1(double t) { return (0.5 * t * t * t - t * t + (2.0 / 3.0)); }
+	double B2(double t) { return (-0.5 * t * t * t + 0.5 * t * t + 0.5 * t + (1.0 / 6.0)); }
+	double B3(double t) { return ((1.0 / 6.0) * t * t * t); }
+
 	// vypocet farby pixela pre trojuholnik
 	QColor getNearestNeighborColor(QVector<QPoint> trianglePoints, QPoint currentPoint);
 	QColor getBarycentricColor(QVector<QPoint> T, QPoint P);
 	QColor getBarycentricDistanceColor(QVector<QPoint> T, QPoint P);
 
-	// kreslenie
+	// kreslenie, orezavanie, vyfarbovanie
 	void drawBresenhamChosenX(QPoint point1, QPoint point2, QColor color);
 	void drawBresenhamChosenY(QPoint point1, QPoint point2, QColor color);
 	void drawGeometry(QVector<QPoint> geometryPoints, QColor penColor, QColor fillColor, int lineAlgorithm, int interpolationMethod);
@@ -70,10 +84,13 @@ public:
 	// funkcie na kreslenie
 	void drawLineDDA(QPoint point1, QPoint point2, QColor color);
 	void drawLineBresenham(QPoint point1, QPoint point2, QColor color);
-	void createLineWithAlgorithm(QPoint point1, QPoint point2, QColor color, int lineAlgorithm);
+	void createLineWithAlgorithm(QPoint point1, QPoint point2, QColor color, int lineAlgorithm, bool shouldDrawPoints = false);
 	void drawCircumference(QPoint point1, QPoint point2, QColor color);
+	void drawPoint(QPoint point, QColor color);
+	void drawPoints(QVector<QPoint> points, QColor color);
 
 	void createGeometry(QVector<QPoint>& geometryPoints, QColor color, QColor fillColor, int lineAlgorithm, int interpolationMethod);
+	void createCurve(QVector<QPoint>& curvePoints, QColor color, int curveType);
 
 	//Image functions
 	bool setImage(const QImage& inputImg);

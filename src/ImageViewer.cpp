@@ -18,6 +18,38 @@ ImageViewer::ImageViewer(QWidget* parent)
 	ui->pushButton_ClearGeometry->setEnabled(false);
 	ui->groupBox_Transformations->setEnabled(false);
 	ui->comboBox_InterpolationMethod->setEnabled(false);
+
+	if (ui->radioButton_Polygon->isChecked())
+	{
+		if (ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
+			ui->groupBox_CurveSettings->setEnabled(false);
+
+		if (!ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
+			ui->groupBox_GeometrySettings->setEnabled(true);
+		if (!ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
+			ui->groupBox_Transformations->setEnabled(true);
+		if (!ui->pushButton_FillColorDialog->isVisible())
+			ui->pushButton_FillColorDialog->setVisible(true);
+		if (!ui->label_FillColor->isVisible())
+			ui->label_FillColor->setVisible(true);
+	}
+	else if (ui->radioButton_Curve->isChecked())
+	{
+		if (!ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
+			ui->groupBox_CurveSettings->setEnabled(true);
+		if (ui->pushButton_ClearCurve->isEnabled())
+			ui->pushButton_ClearCurve->setEnabled(false);
+
+		if (ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
+			ui->groupBox_GeometrySettings->setEnabled(false);
+		if (ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
+			ui->groupBox_Transformations->setEnabled(false);
+		if (ui->pushButton_FillColorDialog->isVisible())
+			ui->pushButton_FillColorDialog->setVisible(false);
+		if (ui->label_FillColor->isVisible())
+			ui->label_FillColor->setVisible(false);
+	}
+	
 }
 
 void ImageViewer::infoMessage(QString message)
@@ -99,39 +131,62 @@ bool ImageViewer::ViewerWidgetEventFilter(QObject* obj, QEvent* event)
 void ImageViewer::ViewerWidgetMouseButtonPress(ViewerWidget* w, QEvent* event)
 {
 	QMouseEvent* e = static_cast<QMouseEvent*>(event);
+	
 	if (drawingEnabled) // ide sa kreslit
 	{
 		if (e->button() == Qt::LeftButton)
 		{
-			geometryPoints.push_back(e->pos());
-			if (geometryPoints.size() > 1)
-			{
-				getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(geometryPoints.size() - 1), geometryPoints.at(geometryPoints.size() - 2), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
-			}
-			//printPoints(geometryPoints);
+			if (geometryPoints.size() == 0)
+				ui->groupBox_GeometryType->setEnabled(false);
 
+			geometryPoints.push_back(e->pos());
+
+			if (ui->radioButton_Polygon->isChecked()) // polygon
+			{
+				if (geometryPoints.size() > 1) // uz sa ide kreslit nejaka hrana polygonu
+				{
+					getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(geometryPoints.size() - 1), geometryPoints.at(geometryPoints.size() - 2), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
+				}
+				else if (geometryPoints.size() == 1) // inak iba prvy bod
+					getCurrentViewerWidget()->drawPoint(e->pos(), pointColor);
+			}
+			else if (ui->radioButton_Curve->isChecked())
+			{
+				getCurrentViewerWidget()->drawPoint(e->pos(), pointColor);
+			}
+			
 		}
 		else if (e->button() == Qt::RightButton) // ukoncenie kreslenia
 		{
-			if (geometryPoints.size() == 1) // kliknutie pravym hned po zadani prveho bodu
+			if (ui->radioButton_Polygon->isChecked())
 			{
-				geometryPoints.push_back(e->pos());
-				getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(1), geometryPoints.at(0), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
+				if (geometryPoints.size() == 1) // kliknutie pravym hned po zadani prveho bodu
+				{
+					geometryPoints.push_back(e->pos());
+					getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(1), geometryPoints.at(0), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
+				}
+				else if (geometryPoints.size() > 2) // ak by uz bola nakreslena usecka, tak sa znovu nenakresli
+				{
+					getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(geometryPoints.size() - 1), geometryPoints.at(0), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
+				}
+
+				drawingEnabled = false;
+				ui->groupBox_Transformations->setEnabled(true);
+
+				if (geometryPoints.size() == 3)
+					ui->comboBox_InterpolationMethod->setEnabled(true);
+
+				getCurrentViewerWidget()->clear();
+				getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 			}
-			else if (geometryPoints.size() > 2) // ak by uz bola nakreslena usecka, tak sa znovu nenakresli
+			else if (ui->radioButton_Curve->isChecked())
 			{
-				getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(geometryPoints.size() - 1), geometryPoints.at(0), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
+
 			}
 			
-			drawingEnabled = false;
-			ui->groupBox_Transformations->setEnabled(true);
-
-			if (geometryPoints.size() == 3)
-				ui->comboBox_InterpolationMethod->setEnabled(true);
-
-			getCurrentViewerWidget()->clear();
-			getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
-			//printPoints(geometryPoints);
+			
+			
+			
 		}
 	}
 	else // nejde sa kreslit, ale posuvat polygon
@@ -408,7 +463,6 @@ void ImageViewer::on_pushButton_PenColorDialog_clicked()
 		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 	}
 }
-
 void ImageViewer::on_pushButton_FillColorDialog_clicked()
 {
 	QColor chosenColor = QColorDialog::getColor(currentPenColor.name(), this, "Select fill color");
@@ -421,7 +475,6 @@ void ImageViewer::on_pushButton_FillColorDialog_clicked()
 		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 	}
 }
-
 void ImageViewer::on_pushButton_CreateGeometry_clicked()
 {
 	ui->pushButton_CreateGeometry->setEnabled(false);
@@ -429,20 +482,19 @@ void ImageViewer::on_pushButton_CreateGeometry_clicked()
 
 	drawingEnabled = true;
 }
-
 void ImageViewer::on_pushButton_ClearGeometry_clicked()
 {
 	ui->pushButton_ClearGeometry->setEnabled(false);
 	ui->pushButton_CreateGeometry->setEnabled(true);
 	ui->groupBox_Transformations->setEnabled(false);
 	ui->comboBox_InterpolationMethod->setEnabled(false);
+	ui->groupBox_GeometryType->setEnabled(true);
 
 	drawingEnabled = false;
 	geometryPoints.clear();
 
 	getCurrentViewerWidget()->clear();
 }
-
 void ImageViewer::on_pushButton_Rotate_clicked()
 {
 	double angle = (ui->spinBox_Angle->value() / 180.0) * M_PI;
@@ -480,7 +532,6 @@ void ImageViewer::on_pushButton_Rotate_clicked()
 	getCurrentViewerWidget()->clear();
 	getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 }
-
 void ImageViewer::on_pushButton_Shear_clicked()
 {
 	double shearFactor = ui->doubleSpinBox_ShearFactor->value();
@@ -492,7 +543,6 @@ void ImageViewer::on_pushButton_Shear_clicked()
 	getCurrentViewerWidget()->clear();
 	getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 }
-
 void ImageViewer::on_pushButton_Symmetry_clicked()
 {
 	// symetria polygonu cez usecku medzi prvym a druhym bodom
@@ -542,5 +592,87 @@ void ImageViewer::on_comboBox_InterpolationMethod_currentIndexChanged(int index)
 {
 	getCurrentViewerWidget()->clear();
 	getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+}
+
+void ImageViewer::on_radioButton_Polygon_clicked()
+{
+	if (ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
+		ui->groupBox_CurveSettings->setEnabled(false);
+	
+	if (!ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
+		ui->groupBox_GeometrySettings->setEnabled(true);
+	if (!ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
+		ui->groupBox_Transformations->setEnabled(true);
+	if (!ui->pushButton_FillColorDialog->isVisible())
+		ui->pushButton_FillColorDialog->setVisible(true);
+	if (!ui->label_FillColor->isVisible())
+		ui->label_FillColor->setVisible(true);
+}
+void ImageViewer::on_radioButton_Curve_clicked()
+{
+	if (!ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
+		ui->groupBox_CurveSettings->setEnabled(true);
+	if (ui->pushButton_ClearCurve->isEnabled())
+		ui->pushButton_ClearCurve->setEnabled(false);
+
+	if (ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
+		ui->groupBox_GeometrySettings->setEnabled(false);
+	if (ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
+		ui->groupBox_Transformations->setEnabled(false);
+	if (ui->pushButton_FillColorDialog->isVisible())
+		ui->pushButton_FillColorDialog->setVisible(false);
+	if (ui->label_FillColor->isVisible())
+		ui->label_FillColor->setVisible(false);
+}
+
+void ImageViewer::on_pushButton_CubicHermit_clicked()
+{
+	curveType = CurveType::HermitCurve;
+	drawingEnabled = true;
+
+	// ui stuff
+	ui->pushButton_CubicHermit->setEnabled(false);
+	ui->pushButton_BezierCurve->setEnabled(false);
+	ui->pushButton_CoonsCurve->setEnabled(false);
+
+	ui->pushButton_ClearCurve->setEnabled(true);
+}
+void ImageViewer::on_pushButton_BezierCurve_clicked()
+{
+	curveType = CurveType::BezierCurve;
+	drawingEnabled = true;
+
+	// ui stuff
+	ui->pushButton_CubicHermit->setEnabled(false);
+	ui->pushButton_BezierCurve->setEnabled(false);
+	ui->pushButton_CoonsCurve->setEnabled(false);
+
+	ui->pushButton_ClearCurve->setEnabled(true);
+}
+void ImageViewer::on_pushButton_CoonsCurve_clicked()
+{
+	curveType = CurveType::CoonsCurve;
+	drawingEnabled = true;
+
+	// ui stuff
+	ui->pushButton_CubicHermit->setEnabled(false);
+	ui->pushButton_BezierCurve->setEnabled(false);
+	ui->pushButton_CoonsCurve->setEnabled(false);
+
+	ui->pushButton_ClearCurve->setEnabled(true);
+}
+
+void ImageViewer::on_pushButton_ClearCurve_clicked()
+{
+	curveType = -1;
+	drawingEnabled = false;
+
+	geometryPoints.clear();
+	getCurrentViewerWidget()->clear();
+
+	ui->pushButton_CubicHermit->setEnabled(true);
+	ui->pushButton_BezierCurve->setEnabled(true);
+	ui->pushButton_CoonsCurve->setEnabled(true);
+	ui->groupBox_GeometryType->setEnabled(true);
 }
 
