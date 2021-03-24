@@ -754,6 +754,9 @@ void ViewerWidget::drawTangentVectors(QVector<QPoint> curvePoints, QVector<Tange
 		endPoint.setY(qCos(angle) * tangentVectors[i].length / 2.0 + startPoint.y());
 
 		drawLineBresenham(startPoint, endPoint, color);
+
+		QPen pen; pen.setColor(color); painter->setPen(pen);
+		painter->drawText(QPoint(endPoint.x() + 5, endPoint.y() - 5), QString("t_%1").arg(i));
 	}
 }
 
