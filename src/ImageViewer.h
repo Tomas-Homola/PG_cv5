@@ -23,8 +23,10 @@ private:
 	// cv3 stuff
 	QColor currentPenColor;
 	QColor currentFillColor;
-	QColor pointColor = QColor("#ED1C24");
+	QColor pointColor = QColor("#1F75FE");
+
 	QVector<QPoint> geometryPoints;
+	QVector<TangentVector> tangentVectors;
 	QPoint mousePosition[2];
 
 	bool drawingEnabled = false;
@@ -98,4 +100,8 @@ private slots:
 	void on_pushButton_BezierCurve_clicked();
 	void on_pushButton_CoonsCurve_clicked();
 	void on_pushButton_ClearCurve_clicked();
+
+	void on_spinBox_TangentVector_valueChanged(int index);
+	void on_spinBox_TangentVectorAngle_valueChanged(int value);
+	void on_doubleSpinBox_TangentVectorLength_valueChanged(double value);
 };

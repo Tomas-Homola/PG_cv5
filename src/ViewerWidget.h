@@ -17,6 +17,12 @@ struct Edge
 	}
 };
 
+struct TangentVector
+{
+	int angle;
+	double length;
+};
+
 enum Interpolation
 {
 	NearestNeighbor = 0, Barycentric1 = 1, Barycentric2 = 2
@@ -76,6 +82,11 @@ private:
 	void fillPolygonScanLineAlgorithm(QVector<QPoint> polygonPoints, QColor fillColor);
 	void fillTriangleScanLine(QVector<QPoint> T, int interpolationMethod);
 
+	void drawHermitCurve(QVector<QPoint> curvePoints, QVector<TangentVector> tangentVectors, QColor color);
+	void drawTangentVectors(QVector<QPoint> curvePoints, QVector<TangentVector> tangentVectors, QColor color);
+	void drawBezierCurve(QVector<QPoint> curvePoints, QColor color);
+	void drawCoonsCurve(QVector<QPoint> curvePoints, QColor color);
+
 public:
 	ViewerWidget(QString viewerName, QSize imgSize, QWidget* parent = Q_NULLPTR);
 	~ViewerWidget();
@@ -90,7 +101,7 @@ public:
 	void drawPoints(QVector<QPoint> points, QColor color);
 
 	void createGeometry(QVector<QPoint>& geometryPoints, QColor color, QColor fillColor, int lineAlgorithm, int interpolationMethod);
-	void createCurve(QVector<QPoint>& curvePoints, QColor color, int curveType);
+	void createCurve(QVector<QPoint>& curvePoints, QVector<TangentVector> tangentVectors, QColor color, int curveType);
 
 	//Image functions
 	bool setImage(const QImage& inputImg);

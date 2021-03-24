@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1239</width>
-    <height>677</height>
+    <height>675</height>
    </rect>
   </property>
   <property name="font">
@@ -73,9 +73,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-134</y>
+            <y>-240</y>
             <width>343</width>
-            <height>738</height>
+            <height>806</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -107,7 +107,7 @@
                  <string>Polygon</string>
                 </property>
                 <property name="checked">
-                 <bool>true</bool>
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
@@ -123,6 +123,9 @@
                 </property>
                 <property name="text">
                  <string>Curve</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -615,12 +618,69 @@
                 <property name="flat">
                  <bool>true</bool>
                 </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_4">
-                 <item>
-                  <widget class="QSpinBox" name="spinBox"/>
+                <layout class="QFormLayout" name="formLayout_3">
+                 <item row="1" column="1">
+                  <widget class="QSpinBox" name="spinBox_TangentVectorAngle">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="minimum">
+                    <number>-359</number>
+                   </property>
+                   <property name="maximum">
+                    <number>359</number>
+                   </property>
+                  </widget>
                  </item>
-                 <item>
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+                 <item row="0" column="1">
+                  <widget class="QSpinBox" name="spinBox_TangentVector">
+                   <property name="layoutDirection">
+                    <enum>Qt::LeftToRight</enum>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_Tangent">
+                   <property name="text">
+                    <string>Tangent:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_TangentVectorAngle">
+                   <property name="text">
+                    <string>Angle:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_TangentVectorLength">
+                   <property name="text">
+                    <string>Length:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_TangentVectorLength">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="decimals">
+                    <number>1</number>
+                   </property>
+                   <property name="minimum">
+                    <double>50.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>300.000000000000000</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>5.000000000000000</double>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </widget>

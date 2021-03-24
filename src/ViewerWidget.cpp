@@ -692,6 +692,152 @@ void ViewerWidget::fillTriangleScanLine(QVector<QPoint> T, int interpolationMeth
 	}
 }
 
+void ViewerWidget::drawHermitCurve(QVector<QPoint> curvePoints, QVector<TangentVector> tangentVectors, QColor color)
+{
+	QPointF Q0, Q1, T0, T1; // T0 -> dotycnica P'_{i-1}, T1 -> dotycnica P'_{i}
+	QPoint startPoint, endPoint;
+	double deltaT = 0.05, t = 0.0, angle = 0.0;
+
+	angle = (tangentVectors[0].angle * M_PI) / 180.0;
+
+	// dotykovy vektor prveho bodu
+	T0.setX(qSin(angle) * tangentVectors[0].length * 2.0);
+	T0.setY(qCos(angle) * tangentVectors[0].length * 2.0);
+
+	for (int i = 1; i < curvePoints.size(); i++)
+	{
+		t = deltaT;
+		Q0 = curvePoints[i - 1];
+
+		angle = (tangentVectors[i].angle * M_PI) / 180.0;
+
+		// dotykovy vektor
+		T1.setX(qSin(angle) * tangentVectors[i].length * 2.0);
+		T1.setY(qCos(angle) * tangentVectors[i].length * 2.0);
+
+		while (t < 1.0)
+		{
+			Q1 = curvePoints[i - 1] * F0(t) + curvePoints[i] * F1(t) + T0 * F2(t) + T1 * F3(t);
+
+			// zaokruhlenie suradnic
+			startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+			endPoint.setX(static_cast<int>(Q1.x())); endPoint.setY(static_cast<int>(Q1.y()));
+
+			drawLineBresenham(startPoint, endPoint, color); // vykreslenie spojnice
+
+			Q0 = Q1;
+			
+			t += deltaT;
+		}
+
+		startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+
+		drawLineBresenham(startPoint, curvePoints[i], color);
+
+		T0 = T1; // dalsia prva dotycnica bude vlastne druha stara
+	}
+	
+}
+
+void ViewerWidget::drawTangentVectors(QVector<QPoint> curvePoints, QVector<TangentVector> tangentVectors, QColor color)
+{
+	QPoint startPoint, endPoint;
+	double angle = 0.0;
+
+	for (int i = 0; i < tangentVectors.size(); i++)
+	{
+		startPoint = curvePoints[i]; // zaciatocny bod bude bod na krivke
+		angle = (tangentVectors[i].angle * M_PI) / 180.0; // premena na radiany
+
+		// dotykovy vektor bude pociatocne nastaveny smerom dole, trochu mensie ako by realne mali byt
+		endPoint.setX(qSin(angle) * tangentVectors[i].length / 2.0 + startPoint.x());
+		endPoint.setY(qCos(angle) * tangentVectors[i].length / 2.0 + startPoint.y());
+
+		drawLineBresenham(startPoint, endPoint, color);
+	}
+}
+
+void ViewerWidget::drawBezierCurve(QVector<QPoint> curvePoints, QColor color)
+{
+	int n = curvePoints.size(), size = 0;
+	QPointF** P = new QPointF* [n];
+	QPointF Q0, Q1;
+	QPoint startPoint, endPoint;
+	double deltaT = 0.05, t = 0.0;
+
+	for (int i = 0; i < n; i++)
+	{
+		size = n - i;
+		P[i] = new QPointF[size];
+		P[0][i] = curvePoints[i]; // vkladanie bodov P_0, P_1, P_2, ..., P_{curvePoints.size - 1} do prveho riadku
+	}
+
+	t = deltaT;
+
+	Q0 = curvePoints[0]; // prvy bod segmentu
+
+	do
+	{
+		for (int i = 1; i < n; i++)
+		{
+			for (int j = 0; j < (n - i); j++)
+			{
+				P[i][j] = (1.0 - t) * P[i - 1][j] + t * P[i - 1][j + 1];
+			}
+		}
+
+		Q1 = P[n - 1][0];
+
+		// zaokruhlenie suradnic
+		startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+		endPoint.setX(static_cast<int>(Q1.x())); endPoint.setY(static_cast<int>(Q1.y()));
+
+		drawLineBresenham(startPoint, endPoint, color); // vykreslenie spojnice
+
+		Q0 = Q1;
+
+		t += deltaT;
+	} while (t < 1.0);
+
+	startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+
+	drawLineBresenham(startPoint, curvePoints[curvePoints.size() - 1], color);
+
+	// uvolnenie alokovanej memory
+	for (int i = 0; i < n; i++)
+		delete[] P[i];
+
+	delete[] P;
+}
+
+void ViewerWidget::drawCoonsCurve(QVector<QPoint> curvePoints, QColor color)
+{
+	QPointF Q0, Q1;
+	QPoint startPoint, endPoint;
+	double deltaT = 0.05, t = 0.0;
+
+	for (int i = 3; i < curvePoints.size(); i++)
+	{
+		t = 0.0;
+
+		Q0 = curvePoints[i - 3] * B0(0) + curvePoints[i - 2] * B1(0) + curvePoints[i - 1] * B2(0) + curvePoints[i] * B3(0);
+
+		do
+		{
+			t += deltaT;
+
+			Q1 = curvePoints[i - 3] * B0(t) + curvePoints[i - 2] * B1(t) + curvePoints[i - 1] * B2(t) + curvePoints[i] * B3(t);
+
+			startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+			endPoint.setX(static_cast<int>(Q1.x())); endPoint.setY(static_cast<int>(Q1.y()));
+
+			drawLineBresenham(startPoint, endPoint, color);
+
+			Q0 = Q1;
+		} while (t < 1.0);
+	}
+}
+
 ViewerWidget::ViewerWidget(QString viewerName, QSize imgSize, QWidget* parent)
 	: QWidget(parent)
 {
@@ -763,7 +909,7 @@ void ViewerWidget::clear(QColor color)
 	{
 		for (size_t y = 0; y < img->height(); y++)
 		{
-			setPixel(x, y, color);
+			setPixel(x, y, QColor(45, 45, 45));
 		}
 	}
 	update();
@@ -812,7 +958,7 @@ void ViewerWidget::drawLineBresenham(QPoint point1, QPoint point2, QColor color)
 	
 	update();
 }
-void ViewerWidget::createLineWithAlgorithm(QPoint point1, QPoint point2, QColor color, int lineAlgorithm, bool shouldDrawPoints = false)
+void ViewerWidget::createLineWithAlgorithm(QPoint point1, QPoint point2, QColor color, int lineAlgorithm, bool shouldDrawPoints)
 {
 	//qDebug() << "line drawn:" << point1 << point2;
 	if (lineAlgorithm == 0) // DDA
@@ -821,8 +967,10 @@ void ViewerWidget::createLineWithAlgorithm(QPoint point1, QPoint point2, QColor 
 		//painter->drawText(point1, QString("(%1,%2)").arg(point1.x()).arg(point1.y()));
 		//painter->drawText(point2, QString("(%1,%2)").arg(point2.x()).arg(point2.y()));
 		if (shouldDrawPoints)
-			drawPoint(point1, defaultColor0); drawPoint(point2, defaultColor0);
-		
+		{
+			drawPoint(point1, defaultColor0);
+			drawPoint(point2, defaultColor0);
+		}
 	}
 	else if (lineAlgorithm == 1) // mr. Bresenham
 	{
@@ -830,7 +978,10 @@ void ViewerWidget::createLineWithAlgorithm(QPoint point1, QPoint point2, QColor 
 		//painter->drawText(point1, QString("(%1,%2)").arg(point1.x()).arg(point1.y()));
 		//painter->drawText(point2, QString("(%1,%2)").arg(point2.x()).arg(point2.y()));
 		if (shouldDrawPoints)
-			drawPoint(point1, defaultColor0); drawPoint(point2, defaultColor0);
+		{
+			drawPoint(point1, defaultColor0);
+			drawPoint(point2, defaultColor0);
+		}
 	}
 	else
 		qDebug() << "Incorrect lineAlgorithm";
@@ -906,8 +1057,19 @@ void ViewerWidget::createGeometry(QVector<QPoint>& geometryPoints, QColor penCol
 		trimPolygon(geometryPoints, penColor, fillColor, lineAlgorithm, interpolationMethod);
 }
 
-void ViewerWidget::createCurve(QVector<QPoint>& curvePoints, QColor color, int curveType)
+void ViewerWidget::createCurve(QVector<QPoint>& curvePoints, QVector<TangentVector> tangentVectors, QColor color, int curveType)
 {
+	drawPoints(curvePoints, defaultColor2); // body
+
+	if (curveType == CurveType::HermitCurve)
+	{
+		drawHermitCurve(curvePoints, tangentVectors, color); // krivka
+		drawTangentVectors(curvePoints, tangentVectors, defaultColor1); // dotykove vektory
+	}
+	else if (curveType == CurveType::BezierCurve)
+		drawBezierCurve(curvePoints, color); // krivka
+	else if (curveType == CurveType::CoonsCurve)
+		drawCoonsCurve(curvePoints, color); // krivka
 }
 
 //Slots

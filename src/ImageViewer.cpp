@@ -7,13 +7,21 @@ ImageViewer::ImageViewer(QWidget* parent)
 {
 	ui->setupUi(this);
 
-	currentPenColor = QColor("#000000");
+	/*QPointF p;
+	p = QPoint(1, 1);
+	double s = 1.5;
+
+	qDebug() << "p =" << p;
+	qDebug() << "s*p =" << s * p;*/
+
+	currentPenColor = QColor("#FFFFFF");
 	currentFillColor = QColor("#1F75FE"); // custom modra farba
-	ui->pushButton_PenColorDialog->setStyleSheet("background-color:#000000");
+	ui->pushButton_PenColorDialog->setStyleSheet("background-color:#FFFFFF");
 	ui->pushButton_FillColorDialog->setStyleSheet("background-color:#1F75FE");
 
-	openNewTabForImg(new ViewerWidget("Default window", QSize(800, 450)));
+	openNewTabForImg(new ViewerWidget("Default window", QSize(800, 550)));
 	ui->tabWidget->setCurrentIndex(ui->tabWidget->count() - 1);
+	getCurrentViewerWidget()->clear();
 
 	ui->pushButton_ClearGeometry->setEnabled(false);
 	ui->groupBox_Transformations->setEnabled(false);
@@ -21,33 +29,23 @@ ImageViewer::ImageViewer(QWidget* parent)
 
 	if (ui->radioButton_Polygon->isChecked())
 	{
-		if (ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
-			ui->groupBox_CurveSettings->setEnabled(false);
+		ui->groupBox_CurveSettings->setEnabled(false);
 
-		if (!ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
-			ui->groupBox_GeometrySettings->setEnabled(true);
-		if (!ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
-			ui->groupBox_Transformations->setEnabled(true);
-		if (!ui->pushButton_FillColorDialog->isVisible())
-			ui->pushButton_FillColorDialog->setVisible(true);
-		if (!ui->label_FillColor->isVisible())
-			ui->label_FillColor->setVisible(true);
+		ui->groupBox_GeometrySettings->setEnabled(true);
+		ui->pushButton_FillColorDialog->setVisible(true);
+		ui->label_FillColor->setVisible(true);
+		ui->groupBox_Transformations->setEnabled(false);
 	}
 	else if (ui->radioButton_Curve->isChecked())
 	{
-		if (!ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
-			ui->groupBox_CurveSettings->setEnabled(true);
-		if (ui->pushButton_ClearCurve->isEnabled())
-			ui->pushButton_ClearCurve->setEnabled(false);
+		ui->groupBox_CurveSettings->setEnabled(true);
+		ui->pushButton_ClearCurve->setEnabled(false);
+		ui->groupBox_MoreCurveSettings->setEnabled(false);
 
-		if (ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
-			ui->groupBox_GeometrySettings->setEnabled(false);
-		if (ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
-			ui->groupBox_Transformations->setEnabled(false);
-		if (ui->pushButton_FillColorDialog->isVisible())
-			ui->pushButton_FillColorDialog->setVisible(false);
-		if (ui->label_FillColor->isVisible())
-			ui->label_FillColor->setVisible(false);
+		ui->groupBox_GeometrySettings->setEnabled(false);
+		ui->groupBox_Transformations->setEnabled(false);
+		ui->pushButton_FillColorDialog->setVisible(false);
+		ui->label_FillColor->setVisible(false);
 	}
 	
 }
@@ -136,10 +134,10 @@ void ImageViewer::ViewerWidgetMouseButtonPress(ViewerWidget* w, QEvent* event)
 	{
 		if (e->button() == Qt::LeftButton)
 		{
-			if (geometryPoints.size() == 0)
+			if (geometryPoints.size() == 0) // po prvom kliknuti sa uz nebude dat menit medzi polygon a curve
 				ui->groupBox_GeometryType->setEnabled(false);
 
-			geometryPoints.push_back(e->pos());
+			geometryPoints.push_back(e->pos()); // pridanie kliknuteho bodu
 
 			if (ui->radioButton_Polygon->isChecked()) // polygon
 			{
@@ -147,8 +145,6 @@ void ImageViewer::ViewerWidgetMouseButtonPress(ViewerWidget* w, QEvent* event)
 				{
 					getCurrentViewerWidget()->createLineWithAlgorithm(geometryPoints.at(geometryPoints.size() - 1), geometryPoints.at(geometryPoints.size() - 2), currentPenColor, ui->comboBox_SelectAlgorithm->currentIndex());
 				}
-				else if (geometryPoints.size() == 1) // inak iba prvy bod
-					getCurrentViewerWidget()->drawPoint(e->pos(), pointColor);
 			}
 			else if (ui->radioButton_Curve->isChecked())
 			{
@@ -158,7 +154,7 @@ void ImageViewer::ViewerWidgetMouseButtonPress(ViewerWidget* w, QEvent* event)
 		}
 		else if (e->button() == Qt::RightButton) // ukoncenie kreslenia
 		{
-			if (ui->radioButton_Polygon->isChecked())
+			if (ui->radioButton_Polygon->isChecked()) // pre polygon
 			{
 				if (geometryPoints.size() == 1) // kliknutie pravym hned po zadani prveho bodu
 				{
@@ -179,14 +175,34 @@ void ImageViewer::ViewerWidgetMouseButtonPress(ViewerWidget* w, QEvent* event)
 				getCurrentViewerWidget()->clear();
 				getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 			}
-			else if (ui->radioButton_Curve->isChecked())
+			else if (ui->radioButton_Curve->isChecked()) // krivka
 			{
+				if ((curveType == CurveType::HermitCurve && geometryPoints.size() >= 2) || (curveType == CurveType::BezierCurve && geometryPoints.size() >= 3) || (curveType == CurveType::CoonsCurve && geometryPoints.size() >= 4))
+				{
+					drawingEnabled = false;
 
+					if (curveType == CurveType::HermitCurve)
+					{
+						ui->groupBox_MoreCurveSettings->setEnabled(true);
+						ui->spinBox_TangentVector->setMaximum(geometryPoints.size() - 1);
+						ui->spinBox_TangentVector->setValue(0);
+
+						TangentVector tangentVector{};
+
+						for (int i = 0; i < geometryPoints.size(); i++)
+						{
+							tangentVector.angle = 0; tangentVector.length = 150.0;
+							tangentVectors.push_back(tangentVector);
+						}
+					}
+					else
+						ui->groupBox_MoreCurveSettings->setEnabled(false);
+
+					getCurrentViewerWidget()->clear();
+					getCurrentViewerWidget()->createCurve(geometryPoints, tangentVectors, currentPenColor, curveType);
+				}
+				
 			}
-			
-			
-			
-			
 		}
 	}
 	else // nejde sa kreslit, ale posuvat polygon
@@ -215,8 +231,18 @@ void ImageViewer::ViewerWidgetMouseButtonRelease(ViewerWidget* w, QEvent* event)
 				geometryPoints[i].setY(geometryPoints[i].y() + pY);
 			}
 
-			getCurrentViewerWidget()->clear(); // vymazanie stareho polygonu
-			getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+			if (ui->radioButton_Polygon->isChecked())
+			{
+				getCurrentViewerWidget()->clear(); // vymazanie stareho polygonu
+				getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+			}
+			else if (ui->radioButton_Curve->isChecked())
+			{
+				getCurrentViewerWidget()->clear();
+				getCurrentViewerWidget()->createCurve(geometryPoints, tangentVectors, currentPenColor, curveType);
+			}
+
+			
 		}
 		
 	}
@@ -237,8 +263,16 @@ void ImageViewer::ViewerWidgetMouseMove(ViewerWidget* w, QEvent* event)
 			geometryPoints[i].setY(geometryPoints[i].y() + pY);
 		}
 
-		getCurrentViewerWidget()->clear(); // vymazanie stareho polygonu
-		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+		if (ui->radioButton_Polygon->isChecked())
+		{
+			getCurrentViewerWidget()->clear(); // vymazanie stareho polygonu
+			getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+		}
+		else if (ui->radioButton_Curve->isChecked())
+		{
+			getCurrentViewerWidget()->clear();
+			getCurrentViewerWidget()->createCurve(geometryPoints, tangentVectors, currentPenColor, curveType);
+		}
 
 		mousePosition[0] = mousePosition[1];
 	}
@@ -255,24 +289,36 @@ void ImageViewer::ViewerWidgetWheel(ViewerWidget* w, QEvent* event)
 
 	if (!drawingEnabled)
 	{
-		double scaleFactorXY = 0.0;
-		double sX = geometryPoints.at(0).x();
-		double sY = geometryPoints.at(0).y();
-
-
-		if (wheelEvent->angleDelta().y() > 0)
-			scaleFactorXY = 1.25;
-		else if (wheelEvent->angleDelta().y() < 0)
-			scaleFactorXY = 0.75;
-
-		for (int i = 0; i < geometryPoints.size(); i++)
+		if (geometryPoints.size() != 0)
 		{
-			geometryPoints[i].setX(sX + static_cast<int>((geometryPoints.at(i).x() - sX) * scaleFactorXY));
-			geometryPoints[i].setY(sY + static_cast<int>((geometryPoints.at(i).y() - sY) * scaleFactorXY));
-		}
+			double scaleFactorXY = 0.0;
+			double sX = geometryPoints.at(0).x();
+			double sY = geometryPoints.at(0).y();
 
-		getCurrentViewerWidget()->clear();
-		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+
+			if (wheelEvent->angleDelta().y() > 0)
+				scaleFactorXY = 1.25;
+			else if (wheelEvent->angleDelta().y() < 0)
+				scaleFactorXY = 0.75;
+
+			for (int i = 0; i < geometryPoints.size(); i++)
+			{
+				geometryPoints[i].setX(sX + static_cast<int>((geometryPoints.at(i).x() - sX) * scaleFactorXY));
+				geometryPoints[i].setY(sY + static_cast<int>((geometryPoints.at(i).y() - sY) * scaleFactorXY));
+			}
+
+			if (ui->radioButton_Polygon->isChecked())
+			{
+				getCurrentViewerWidget()->clear(); // vymazanie stareho polygonu
+				getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+			}
+			else if (ui->radioButton_Curve->isChecked())
+			{
+				getCurrentViewerWidget()->clear();
+				getCurrentViewerWidget()->createCurve(geometryPoints, tangentVectors, currentPenColor, curveType);
+			}
+		}
+		
 	}
 }
 
@@ -479,6 +525,7 @@ void ImageViewer::on_pushButton_CreateGeometry_clicked()
 {
 	ui->pushButton_CreateGeometry->setEnabled(false);
 	ui->pushButton_ClearGeometry->setEnabled(true);
+	ui->groupBox_GeometryType->setEnabled(false);
 
 	drawingEnabled = true;
 }
@@ -497,95 +544,107 @@ void ImageViewer::on_pushButton_ClearGeometry_clicked()
 }
 void ImageViewer::on_pushButton_Rotate_clicked()
 {
-	double angle = (ui->spinBox_Angle->value() / 180.0) * M_PI;
-	double sX = geometryPoints.at(0).x();
-	double sY = geometryPoints.at(0).y();
-	double x = 0.0, y = 0.0;
-
-	if (ui->spinBox_Angle->value() < 0)
+	if (geometryPoints.size() != 0)
 	{
-		//qDebug() << "clockwise";
-		
-		for (int i = 1; i < geometryPoints.size(); i++)
+		double angle = (ui->spinBox_Angle->value() / 180.0) * M_PI;
+		double sX = geometryPoints.at(0).x();
+		double sY = geometryPoints.at(0).y();
+		double x = 0.0, y = 0.0;
+
+		if (ui->spinBox_Angle->value() < 0)
 		{
-			x = geometryPoints.at(i).x();
-			y = geometryPoints.at(i).y();
+			//qDebug() << "clockwise";
 
-			geometryPoints[i].setX(static_cast<int>((x - sX) * qCos(angle) + (y - sY) * qSin(angle) + sX));
-			geometryPoints[i].setY(static_cast<int>(-(x - sX) * qSin(angle) + (y - sY) * qCos(angle) + sY));
+			for (int i = 1; i < geometryPoints.size(); i++)
+			{
+				x = geometryPoints.at(i).x();
+				y = geometryPoints.at(i).y();
+
+				geometryPoints[i].setX(static_cast<int>((x - sX) * qCos(angle) + (y - sY) * qSin(angle) + sX));
+				geometryPoints[i].setY(static_cast<int>(-(x - sX) * qSin(angle) + (y - sY) * qCos(angle) + sY));
+			}
 		}
-	}
-	else if (ui->spinBox_Angle->value() > 0)
-	{
-		//qDebug() << "anti-clockwise";
-		angle = 2 * M_PI - angle;
-		for (int i = 1; i < geometryPoints.size(); i++)
+		else if (ui->spinBox_Angle->value() > 0)
 		{
-			x = geometryPoints.at(i).x();
-			y = geometryPoints.at(i).y();
+			//qDebug() << "anti-clockwise";
+			angle = 2 * M_PI - angle;
+			for (int i = 1; i < geometryPoints.size(); i++)
+			{
+				x = geometryPoints.at(i).x();
+				y = geometryPoints.at(i).y();
 
-			geometryPoints[i].setX(static_cast<int>((x - sX) * qCos(angle) - (y - sY) * qSin(angle) + sX));
-			geometryPoints[i].setY(static_cast<int>((x - sX) * qSin(angle) + (y - sY) * qCos(angle) + sY));
+				geometryPoints[i].setX(static_cast<int>((x - sX) * qCos(angle) - (y - sY) * qSin(angle) + sX));
+				geometryPoints[i].setY(static_cast<int>((x - sX) * qSin(angle) + (y - sY) * qCos(angle) + sY));
+			}
 		}
-	}
 
-	getCurrentViewerWidget()->clear();
-	getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+		getCurrentViewerWidget()->clear();
+		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+	}
+	
 }
 void ImageViewer::on_pushButton_Shear_clicked()
 {
-	double shearFactor = ui->doubleSpinBox_ShearFactor->value();
-	double sY = geometryPoints.at(0).y();
+	if (geometryPoints.size() != 0)
+	{
+		double shearFactor = ui->doubleSpinBox_ShearFactor->value();
+		double sY = geometryPoints.at(0).y();
 
-	for (int i = 1; i < geometryPoints.size(); i++)
-		geometryPoints[i].setX(static_cast<int>(geometryPoints.at(i).x() + shearFactor * (geometryPoints.at(i).y() - sY)));
+		for (int i = 1; i < geometryPoints.size(); i++)
+			geometryPoints[i].setX(static_cast<int>(geometryPoints.at(i).x() + shearFactor * (geometryPoints.at(i).y() - sY)));
 
-	getCurrentViewerWidget()->clear();
-	getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+		getCurrentViewerWidget()->clear();
+		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+	}
+	
 }
 void ImageViewer::on_pushButton_Symmetry_clicked()
 {
-	// symetria polygonu cez usecku medzi prvym a druhym bodom
-	// symetria usecky cez horizontalnu priamku prechadzajucu stredom usecky
-	double u = static_cast<double>(geometryPoints.at(1).x()) - geometryPoints.at(0).x();
-	double v = static_cast<double>(geometryPoints.at(1).y()) - geometryPoints.at(0).y();
-	double a = v;
-	double b = -u;
-	double c = -a * geometryPoints.at(0).x() - b * geometryPoints.at(0).y();
-	double x = 0.0, y = 0.0;
-	int midPointX = qAbs((geometryPoints.at(1).x() + geometryPoints.at(0).x()) / 2);
-	int midPointY = qAbs((geometryPoints.at(1).y() + geometryPoints.at(0).y()) / 2);
-	int deltaY = 0;
-
-	if (geometryPoints.size() == 2) // usecka
+	if (geometryPoints.size() != 0)
 	{
-		deltaY = qAbs(geometryPoints.at(0).y() - midPointY); // 
+		// symetria polygonu cez usecku medzi prvym a druhym bodom
+		// symetria usecky cez horizontalnu priamku prechadzajucu stredom usecky
+		double u = static_cast<double>(geometryPoints.at(1).x()) - geometryPoints.at(0).x();
+		double v = static_cast<double>(geometryPoints.at(1).y()) - geometryPoints.at(0).y();
+		double a = v;
+		double b = -u;
+		double c = -a * geometryPoints.at(0).x() - b * geometryPoints.at(0).y();
+		double x = 0.0, y = 0.0;
+		int midPointX = qAbs((geometryPoints.at(1).x() + geometryPoints.at(0).x()) / 2);
+		int midPointY = qAbs((geometryPoints.at(1).y() + geometryPoints.at(0).y()) / 2);
+		int deltaY = 0;
 
-		if (geometryPoints.at(0).y() < midPointY)
+		if (geometryPoints.size() == 2) // usecka
 		{
-			geometryPoints[0].setY(geometryPoints.at(0).y() + 2 * deltaY);
-			geometryPoints[1].setY(geometryPoints.at(1).y() - 2 * deltaY);
+			deltaY = qAbs(geometryPoints.at(0).y() - midPointY); // 
+
+			if (geometryPoints.at(0).y() < midPointY)
+			{
+				geometryPoints[0].setY(geometryPoints.at(0).y() + 2 * deltaY);
+				geometryPoints[1].setY(geometryPoints.at(1).y() - 2 * deltaY);
+			}
+			else if (geometryPoints.at(0).y() > midPointY)
+			{
+				geometryPoints[0].setY(geometryPoints.at(0).y() - 2 * deltaY);
+				geometryPoints[1].setY(geometryPoints.at(1).y() + 2 * deltaY);
+			}
 		}
-		else if (geometryPoints.at(0).y() > midPointY)
+		else if (geometryPoints.size() > 2) // polygon
 		{
-			geometryPoints[0].setY(geometryPoints.at(0).y() - 2 * deltaY);
-			geometryPoints[1].setY(geometryPoints.at(1).y() + 2 * deltaY);
+			for (int i = 2; i < geometryPoints.size(); i++)
+			{
+				x = geometryPoints.at(i).x();
+				y = geometryPoints.at(i).y();
+
+				geometryPoints[i].setX(static_cast<int>(x - 2 * a * ((a * x + b * y + c) / (a * a + b * b))));
+				geometryPoints[i].setY(static_cast<int>(y - 2 * b * ((a * x + b * y + c) / (a * a + b * b))));
+			}
 		}
+
+		getCurrentViewerWidget()->clear();
+		getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
 	}
-	else if (geometryPoints.size() > 2) // polygon
-	{
-		for (int i = 2; i < geometryPoints.size(); i++)
-		{
-			x = geometryPoints.at(i).x();
-			y = geometryPoints.at(i).y();
-
-			geometryPoints[i].setX(static_cast<int>(x - 2 * a * ((a * x + b * y + c) / (a * a + b * b))));
-			geometryPoints[i].setY(static_cast<int>(y - 2 * b * ((a * x + b * y + c) / (a * a + b * b))));
-		}
-	}
-
-	getCurrentViewerWidget()->clear();
-	getCurrentViewerWidget()->createGeometry(geometryPoints, currentPenColor, currentFillColor, ui->comboBox_SelectAlgorithm->currentIndex(), ui->comboBox_InterpolationMethod->currentIndex());
+	
 }
 
 void ImageViewer::on_comboBox_InterpolationMethod_currentIndexChanged(int index)
@@ -596,32 +655,22 @@ void ImageViewer::on_comboBox_InterpolationMethod_currentIndexChanged(int index)
 
 void ImageViewer::on_radioButton_Polygon_clicked()
 {
-	if (ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
-		ui->groupBox_CurveSettings->setEnabled(false);
+	ui->groupBox_CurveSettings->setEnabled(false);
 	
-	if (!ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
-		ui->groupBox_GeometrySettings->setEnabled(true);
-	if (!ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
-		ui->groupBox_Transformations->setEnabled(true);
-	if (!ui->pushButton_FillColorDialog->isVisible())
-		ui->pushButton_FillColorDialog->setVisible(true);
-	if (!ui->label_FillColor->isVisible())
-		ui->label_FillColor->setVisible(true);
-}
+	ui->groupBox_GeometrySettings->setEnabled(true);
+	ui->groupBox_Transformations->setEnabled(false);
+	ui->pushButton_FillColorDialog->setVisible(true);
+	ui->label_FillColor->setVisible(true);
+} 
 void ImageViewer::on_radioButton_Curve_clicked()
 {
-	if (!ui->groupBox_CurveSettings->isEnabled()) // nastavenia krivky
 		ui->groupBox_CurveSettings->setEnabled(true);
-	if (ui->pushButton_ClearCurve->isEnabled())
+		ui->groupBox_MoreCurveSettings->setEnabled(false);
 		ui->pushButton_ClearCurve->setEnabled(false);
 
-	if (ui->groupBox_GeometrySettings->isEnabled()) // nastavenia geometrie
 		ui->groupBox_GeometrySettings->setEnabled(false);
-	if (ui->groupBox_Transformations->isEnabled()) // geometricke transformacie
 		ui->groupBox_Transformations->setEnabled(false);
-	if (ui->pushButton_FillColorDialog->isVisible())
 		ui->pushButton_FillColorDialog->setVisible(false);
-	if (ui->label_FillColor->isVisible())
 		ui->label_FillColor->setVisible(false);
 }
 
@@ -668,11 +717,45 @@ void ImageViewer::on_pushButton_ClearCurve_clicked()
 	drawingEnabled = false;
 
 	geometryPoints.clear();
+	tangentVectors.clear();
 	getCurrentViewerWidget()->clear();
 
 	ui->pushButton_CubicHermit->setEnabled(true);
 	ui->pushButton_BezierCurve->setEnabled(true);
 	ui->pushButton_CoonsCurve->setEnabled(true);
 	ui->groupBox_GeometryType->setEnabled(true);
+	ui->groupBox_MoreCurveSettings->setEnabled(false);
+	ui->spinBox_TangentVector->setValue(0);
+	ui->spinBox_TangentVectorAngle->setValue(0);
 }
 
+void ImageViewer::on_spinBox_TangentVector_valueChanged(int index)
+{
+	if (tangentVectors.size() != 0)
+	{
+		ui->spinBox_TangentVectorAngle->setValue(tangentVectors[index].angle); // priradenie aktualneho uhla
+		ui->doubleSpinBox_TangentVectorLength->setValue(tangentVectors[index].length); // a aktualnej dlzky
+	}
+}
+void ImageViewer::on_spinBox_TangentVectorAngle_valueChanged(int value)
+{
+	if (tangentVectors.size() != 0)
+	{
+		int index = ui->spinBox_TangentVector->value();
+		tangentVectors[index].angle = value;
+
+		getCurrentViewerWidget()->clear();
+		getCurrentViewerWidget()->createCurve(geometryPoints, tangentVectors, currentPenColor, curveType);
+	}
+}
+void ImageViewer::on_doubleSpinBox_TangentVectorLength_valueChanged(double value)
+{
+	if (tangentVectors.size() != 0)
+	{
+		int index = ui->spinBox_TangentVector->value();
+		tangentVectors[index].length = value;
+
+		getCurrentViewerWidget()->clear();
+		getCurrentViewerWidget()->createCurve(geometryPoints, tangentVectors, currentPenColor, curveType);
+	}
+}
