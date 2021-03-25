@@ -707,7 +707,7 @@ void ViewerWidget::drawHermitCurve(QVector<QPoint> curvePoints, QVector<TangentV
 	for (int i = 1; i < curvePoints.size(); i++)
 	{
 		t = deltaT;
-		Q0 = curvePoints[i - 1];
+		Q0 = (QPointF)curvePoints[i - 1];
 
 		angle = (tangentVectors[i].angle * M_PI) / 180.0;
 
@@ -717,11 +717,11 @@ void ViewerWidget::drawHermitCurve(QVector<QPoint> curvePoints, QVector<TangentV
 
 		while (t < 1.0)
 		{
-			Q1 = curvePoints[i - 1] * F0(t) + curvePoints[i] * F1(t) + T0 * F2(t) + T1 * F3(t);
+			Q1 = (QPointF)curvePoints[i - 1] * F0(t) + (QPointF)curvePoints[i] * F1(t) + T0 * F2(t) + T1 * F3(t);
 
 			// zaokruhlenie suradnic
-			startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
-			endPoint.setX(static_cast<int>(Q1.x())); endPoint.setY(static_cast<int>(Q1.y()));
+			startPoint.setX(static_cast<int>(Q0.x() + 0.5)); startPoint.setY(static_cast<int>(Q0.y() + 0.5));
+			endPoint.setX(static_cast<int>(Q1.x() + 0.5)); endPoint.setY(static_cast<int>(Q1.y() + 0.5));
 
 			drawLineBresenham(startPoint, endPoint, color); // vykreslenie spojnice
 
@@ -730,7 +730,7 @@ void ViewerWidget::drawHermitCurve(QVector<QPoint> curvePoints, QVector<TangentV
 			t += deltaT;
 		}
 
-		startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+		startPoint.setX(static_cast<int>(Q0.x() + 0.5)); startPoint.setY(static_cast<int>(Q0.y() + 0.5));
 
 		drawLineBresenham(startPoint, curvePoints[i], color);
 
@@ -738,7 +738,6 @@ void ViewerWidget::drawHermitCurve(QVector<QPoint> curvePoints, QVector<TangentV
 	}
 	
 }
-
 void ViewerWidget::drawTangentVectors(QVector<QPoint> curvePoints, QVector<TangentVector> tangentVectors, QColor color)
 {
 	QPoint startPoint, endPoint;
@@ -759,7 +758,6 @@ void ViewerWidget::drawTangentVectors(QVector<QPoint> curvePoints, QVector<Tange
 		painter->drawText(QPoint(endPoint.x() + 5, endPoint.y() - 5), QString("t_%1").arg(i));
 	}
 }
-
 void ViewerWidget::drawBezierCurve(QVector<QPoint> curvePoints, QColor color)
 {
 	int n = curvePoints.size(), size = 0;
@@ -772,12 +770,12 @@ void ViewerWidget::drawBezierCurve(QVector<QPoint> curvePoints, QColor color)
 	{
 		size = n - i;
 		P[i] = new QPointF[size];
-		P[0][i] = curvePoints[i]; // vkladanie bodov P_0, P_1, P_2, ..., P_{curvePoints.size - 1} do prveho riadku
+		P[0][i] = (QPointF)curvePoints[i]; // vkladanie bodov P_0, P_1, P_2, ..., P_{curvePoints.size - 1} do prveho riadku
 	}
 
 	t = deltaT;
 
-	Q0 = curvePoints[0]; // prvy bod segmentu
+	Q0 = (QPointF)curvePoints[0]; // prvy bod segmentu
 
 	do
 	{
@@ -792,8 +790,8 @@ void ViewerWidget::drawBezierCurve(QVector<QPoint> curvePoints, QColor color)
 		Q1 = P[n - 1][0];
 
 		// zaokruhlenie suradnic
-		startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
-		endPoint.setX(static_cast<int>(Q1.x())); endPoint.setY(static_cast<int>(Q1.y()));
+		startPoint.setX(static_cast<int>(Q0.x() + 0.5)); startPoint.setY(static_cast<int>(Q0.y() + 0.5));
+		endPoint.setX(static_cast<int>(Q1.x() + 0.5)); endPoint.setY(static_cast<int>(Q1.y() + 0.5));
 
 		drawLineBresenham(startPoint, endPoint, color); // vykreslenie spojnice
 
@@ -802,7 +800,7 @@ void ViewerWidget::drawBezierCurve(QVector<QPoint> curvePoints, QColor color)
 		t += deltaT;
 	} while (t < 1.0);
 
-	startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
+	startPoint.setX(static_cast<int>(Q0.x() + 0.5)); startPoint.setY(static_cast<int>(Q0.y() + 0.5));
 
 	drawLineBresenham(startPoint, curvePoints[curvePoints.size() - 1], color);
 
@@ -812,7 +810,6 @@ void ViewerWidget::drawBezierCurve(QVector<QPoint> curvePoints, QColor color)
 
 	delete[] P;
 }
-
 void ViewerWidget::drawCoonsCurve(QVector<QPoint> curvePoints, QColor color)
 {
 	QPointF Q0, Q1;
@@ -823,16 +820,16 @@ void ViewerWidget::drawCoonsCurve(QVector<QPoint> curvePoints, QColor color)
 	{
 		t = 0.0;
 
-		Q0 = curvePoints[i - 3] * B0(0) + curvePoints[i - 2] * B1(0) + curvePoints[i - 1] * B2(0) + curvePoints[i] * B3(0);
+		Q0 = (QPointF)curvePoints[i - 3] * B0(0) + (QPointF)curvePoints[i - 2] * B1(0) + (QPointF)curvePoints[i - 1] * B2(0) + (QPointF)curvePoints[i] * B3(0);
 
 		do
 		{
 			t += deltaT;
 
-			Q1 = curvePoints[i - 3] * B0(t) + curvePoints[i - 2] * B1(t) + curvePoints[i - 1] * B2(t) + curvePoints[i] * B3(t);
+			Q1 = (QPointF)curvePoints[i - 3] * B0(t) + (QPointF)curvePoints[i - 2] * B1(t) + (QPointF)curvePoints[i - 1] * B2(t) + (QPointF)curvePoints[i] * B3(t);
 
-			startPoint.setX(static_cast<int>(Q0.x())); startPoint.setY(static_cast<int>(Q0.y()));
-			endPoint.setX(static_cast<int>(Q1.x())); endPoint.setY(static_cast<int>(Q1.y()));
+			startPoint.setX(static_cast<int>(Q0.x() + 0.5)); startPoint.setY(static_cast<int>(Q0.y() + 0.5));
+			endPoint.setX(static_cast<int>(Q1.x() + 0.5)); endPoint.setY(static_cast<int>(Q1.y() + 0.5));
 
 			drawLineBresenham(startPoint, endPoint, color);
 
